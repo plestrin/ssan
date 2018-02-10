@@ -5,6 +5,24 @@ import os
 import re
 import enchant
 
+DICT = enchant.Dict('en_US')
+OWN_DICT = frozenset(('aes', 'arg', 'cmd', 'ciphertext', 'del', 'desc', 'dst', 'eax', 'ebx', 'ecx', 'edx', 'gettime', 'hmac', 'init', 'malloc', 'mem', 'msg', 'plaintext', 'prev', 'ptr', 'realloc', 'shl', 'shr', 'snprintf', 'src', 'str', 'tsearch', 'wunused', 'xor', 'xtea'))
+
+EXCLUDE = ('.git')
+
+RE_TOKENIZE_WORD = re.compile(r'(?<!%)[a-zA-Z][a-z]*')
+
+def check_spelling(string, file_name, line):
+	global DICT
+	global OWN_DICT
+	global RE_TOKENIZE_WORD
+
+	words = RE_TOKENIZE_WORD.findall(string)
+	for word in words:
+		if len(word) < 32 and not DICT.check(word) and word.lower() not in OWN_DICT:
+			sys.stdout.write(file_name + ':' + str(line) + ' - spell check: \x1b[31m' + word + '\x1b[0m in ' + string + ' (no auto correct!)\n')
+	
+
 def sscan_text(lines, file_name):
 	result = 0
 
@@ -39,10 +57,7 @@ def sscan_text(lines, file_name):
 	return result, lines
 
 def sscan_ccode(lines, file_name):
-	global d
 	result = 0
-
-	OWN_DICT = ('aes', 'arg', 'cmd', 'ciphertext', 'del', 'desc', 'dst', 'eax', 'ebx', 'ecx', 'edx', 'gettime', 'hmac', 'init', 'malloc', 'mem', 'plaintext', 'prev', 'ptr', 'realloc', 'shl', 'shr', 'src', 'str', 'tsearch', 'wunused', 'xor', 'xtea')
 
 	# Double space
 	regex = re.compile(r'( {2}|\t )')
@@ -85,16 +100,11 @@ def sscan_ccode(lines, file_name):
 
 	# Spell check strings
 	regex1 = re.compile(r'(?<!include )"[^"]*"')
-	regex2 = re.compile(r'(?<!%)[a-zA-Z][a-z]*')
-	regex3 = re.compile(r'%[0-9]*(c|d|p|s|u|x|lld|llu|llx)')
+	regex2 = re.compile(r'%[0-9]*(c|d|p|s|u|x|lld|llu|llx)')
 	for i, line in enumerate(lines):
 		strings = regex1.findall(line)
 		for string in strings:
-			string = regex3.sub('', string)
-			words = regex2.findall(string)
-			for word in words:
-				if len(word) < 32 and not d.check(word) and word.lower() not in OWN_DICT:
-					sys.stdout.write(file_name + ':' + str(i + 1) + ' - spell check: \x1b[31m' + word + '\x1b[0m in ' + string + ' (no auto correct!)\n')
+			check_spelling(regex2.sub('', string), file_name, i + 1)
 
 	# Non-void prototype
 	regex = re.compile(r'([a-zA-Z0-9_]+)[ ]*\(\)\{')
@@ -109,14 +119,14 @@ def sscan_ccode(lines, file_name):
 def sscan_cheader(lines, file_name):
 	# Recursive include protection
 	if len(lines) < 3:
-		sys.stdout.write(file_name + ':0 - non standard / missing protection to prevent recursive include (no auto correct!)\n')
+		sys.stdout.write(file_name + ':1 - non standard / missing protection to prevent recursive include (no auto correct!)\n')
 	else:
 		if lines[0] != '#ifndef ' + file_name[:-2].upper() + '_H\n':
-			sys.stdout.write(file_name + ':0 - non standard / missing protection to prevent recursive include (no auto correct!)\n')
-		elif lines[1] != '#define ' + file_name[:-2].upper() + '_H\n':
 			sys.stdout.write(file_name + ':1 - non standard / missing protection to prevent recursive include (no auto correct!)\n')
+		elif lines[1] != '#define ' + file_name[:-2].upper() + '_H\n':
+			sys.stdout.write(file_name + ':2 - non standard / missing protection to prevent recursive include (no auto correct!)\n')
 		elif lines[-1] != '#endif\n':
-			sys.stdout.write(file_name + ':' + str(len(lines) - 1) + ' - non standard / missing protection to prevent recursive include (no auto correct!)\n')
+			sys.stdout.write(file_name + ':' + str(len(lines)) + ' - non standard / missing protection to prevent recursive include (no auto correct!)\n')
 
 	return 0, lines
 
@@ -177,10 +187,6 @@ def dispatcher(root_name, file_name):
 		file.close()
 
 if __name__ == '__main__':
-	EXCLUDE = ('.git')
-
-	d = enchant.Dict('en_US')
-
 	if len(sys.argv) < 2:
 		sys.stderr.write('\x1b[31m[!]\x1b[0m no file or directory specified\n')
 		sys.exit(1)
