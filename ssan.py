@@ -38,12 +38,11 @@ def sscan_text(lines, file_name):
 
 	return result, lines
 
-
 def sscan_ccode(lines, file_name):
 	global d
 	result = 0
 
-	OWN_DICT = ('aes', 'arg', 'cmd', 'ciphertext', 'desc', 'dst', 'eax', 'ebx', 'ecx', 'edx', 'gettime', 'hmac', 'init', 'malloc', 'mem', 'plaintext', 'ptr', 'realloc', 'shl', 'shr', 'src', 'str', 'tsearch', 'wunused', 'xor', 'xtea')
+	OWN_DICT = ('aes', 'arg', 'cmd', 'ciphertext', 'del', 'desc', 'dst', 'eax', 'ebx', 'ecx', 'edx', 'gettime', 'hmac', 'init', 'malloc', 'mem', 'plaintext', 'prev', 'ptr', 'realloc', 'shl', 'shr', 'src', 'str', 'tsearch', 'wunused', 'xor', 'xtea')
 
 	# Double space
 	regex = re.compile(r'( {2}|\t )')
@@ -108,6 +107,17 @@ def sscan_ccode(lines, file_name):
 	return result, lines
 
 def sscan_cheader(lines, file_name):
+	# Recursive include protection
+	if len(lines) < 3:
+		sys.stdout.write(file_name + ':0 - non standard / missing protection to prevent recursive include (no auto correct!)\n')
+	else:
+		if lines[0] != '#ifndef ' + file_name[:-2].upper() + '_H\n':
+			sys.stdout.write(file_name + ':0 - non standard / missing protection to prevent recursive include (no auto correct!)\n')
+		elif lines[1] != '#define ' + file_name[:-2].upper() + '_H\n':
+			sys.stdout.write(file_name + ':1 - non standard / missing protection to prevent recursive include (no auto correct!)\n')
+		elif lines[-1] != '#endif\n':
+			sys.stdout.write(file_name + ':' + str(len(lines) - 1) + ' - non standard / missing protection to prevent recursive include (no auto correct!)\n')
+
 	return 0, lines
 
 def dispatcher(root_name, file_name):
