@@ -12,6 +12,8 @@ EXCLUDE = ('.git')
 
 RE_TOKENIZE_WORD = re.compile(r'(?<!%)[a-zA-Z][a-z]*')
 
+TAB_SIZE = 4 
+
 def check_spelling(string, file_name, line):
 	global DICT
 	global OWN_DICT
@@ -29,6 +31,13 @@ def sscan_text(lines, file_name):
 	# Check empty file
 	if not len(lines):
 		sys.stdout.write(file_name + ' - empty file\n')
+
+	# Check Windows newline
+	for i, line in enumerate(lines):
+		if line.find('\r') != -1:
+			sys.stdout.write(file_name + ':' + str(i + 1) + ' - Windows end of file\n')
+			lines[i] = line.replace('\r', '')
+			result = 1
 
 	# Check empty lines
 	if lines[-1][-1] != '\n':
@@ -57,6 +66,8 @@ def sscan_text(lines, file_name):
 	return result, lines
 
 def sscan_ccode(lines, file_name):
+	global TAB_SIZE
+
 	result = 0
 
 	# Double space
@@ -114,6 +125,38 @@ def sscan_ccode(lines, file_name):
 			lines[i] = regex.sub(r'\1(void){', line)
 			result = 1
 
+	# Multi-line macro
+	prev_size = 0
+	for i, line in enumerate(lines):
+		if line[-2:] == '\\\n':
+			size = 0
+			for c in line[:-2]:
+				if c == '\t':
+					size += TAB_SIZE - (size % TAB_SIZE)
+				else:
+					size += 1
+			if prev_size:
+				if size > prev_size:
+					sys.stdout.write(file_name + ':' + str(i + 1) + ' - align multi-line macro, line too long (no auto correct!)\n')
+				if size < prev_size:
+					while size < prev_size:
+						lines[i] = lines[i][:-2] + '\t\\\n'
+						size +=  TAB_SIZE - (size % TAB_SIZE)
+						result = 1
+					sys.stdout.write(file_name + ':' + str(i + 1) + ' - align multi-line macro\n')
+			elif size % TAB_SIZE:
+				lines[i] = lines[i][:-2] + '\t\\\n'
+				prev_size = size + TAB_SIZE - (size % TAB_SIZE)
+				sys.stdout.write(file_name + ':' + str(i + 1) + ' - align multi-line macro\n')
+				result = 1
+			else:
+				prev_size = size
+		else:
+			prev_size = 0
+
+
+
+
 	return result, lines
 
 def sscan_cheader(lines, file_name):
@@ -121,9 +164,9 @@ def sscan_cheader(lines, file_name):
 	if len(lines) < 3:
 		sys.stdout.write(file_name + ':1 - non standard / missing protection to prevent recursive include (no auto correct!)\n')
 	else:
-		if lines[0] != '#ifndef ' + file_name[:-2].upper() + '_H\n':
+		if lines[0] != '#ifndef ' + os.path.basename(file_name)[:-2].upper() + '_H\n':
 			sys.stdout.write(file_name + ':1 - non standard / missing protection to prevent recursive include (no auto correct!)\n')
-		elif lines[1] != '#define ' + file_name[:-2].upper() + '_H\n':
+		elif lines[1] != '#define ' + os.path.basename(file_name)[:-2].upper() + '_H\n':
 			sys.stdout.write(file_name + ':2 - non standard / missing protection to prevent recursive include (no auto correct!)\n')
 		elif lines[-1] != '#endif\n':
 			sys.stdout.write(file_name + ':' + str(len(lines)) + ' - non standard / missing protection to prevent recursive include (no auto correct!)\n')
