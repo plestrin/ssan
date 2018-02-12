@@ -192,7 +192,7 @@ def sscan_ccode(lines, file_name):
 			generic_spelling(regex2.sub('', string), file_name, i + 1)
 
 	# Non-void prototype
-	regex = re.compile(r'([a-zA-Z0-9_]+)[ ]*\(\)\{')
+	regex = re.compile(r'([a-zA-Z0-9_]+)[ ]*\(\)[ ]*\{')
 	for i, line in enumerate(lines):
 		if len(regex.findall(line)):
 			report(CHECK_MISSING_VOID_PROT, file_name, i + 1, True)
@@ -250,37 +250,39 @@ def sscan_cheader(lines, file_name):
 def dispatcher(root_name, file_name):
 	sscan_list = []
 
-	if file_name.endswith('.asm'):
+	basename = os.path.basename(file_name)
+
+	if basename.endswith('.asm'):
 		sscan_list = [sscan_text]
-	elif file_name.endswith('.c'):
+	elif basename.endswith('.c'):
 		sscan_list = [sscan_text, sscan_ccode]
-	elif file_name.endswith('.cpp'):
+	elif basename.endswith('.cpp'):
 		sscan_list = [sscan_text, sscan_ccode]
-	elif file_name == '.gitignore':
+	elif basename == '.gitignore':
 		sscan_list = [sscan_text]
-	elif file_name.endswith('.h'):
+	elif basename.endswith('.h'):
 		sscan_list = [sscan_text, sscan_ccode, sscan_cheader]
-	elif file_name.endswith('.html'):
+	elif basename.endswith('.html'):
 		sscan_list = [sscan_text]
-	elif file_name.endswith('.js'):
+	elif basename.endswith('.js'):
 		sscan_list = [sscan_text]
-	elif file_name.endswith('.md'):
+	elif basename.endswith('.md'):
 		sscan_list = [sscan_text]
-	elif file_name.endswith('.o'):
+	elif basename.endswith('.o'):
 		return
-	elif file_name.endswith('.py'):
+	elif basename.endswith('.py'):
 		sscan_list = [sscan_text]
-	elif file_name.endswith('.pyc'):
+	elif basename.endswith('.pyc'):
 		return
-	elif file_name.endswith('.sh'):
+	elif basename.endswith('.sh'):
 		sscan_list = [sscan_text]
-	elif file_name.endswith('.txt'):
+	elif basename.endswith('.txt'):
 		sscan_list = [sscan_text]
-	elif file_name.endswith('.yara'):
+	elif basename.endswith('.yara'):
 		sscan_list = [sscan_text]
-	elif file_name.endswith('.xml'):
+	elif basename.endswith('.xml'):
 		sscan_list = [sscan_text]
-	elif file_name == 'Makefile':
+	elif basename == 'Makefile':
 		sscan_list = [sscan_text]
 	else:
 		sys.stdout.write('\x1b[33m[-]\x1b[0m file ' + os.path.join(root_name, file_name) + ' has no known type -> skip\n')
