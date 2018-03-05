@@ -6,7 +6,7 @@ import re
 import enchant
 
 DICT = enchant.Dict('en_US')
-OWN_DICT = frozenset(('aes', 'arg', 'cmd', 'ciphertext', 'del', 'desc', 'dst', 'eax', 'ebx', 'ecx', 'edx', 'gettime', 'grep', 'hmac', 'init', 'linux', 'malloc', 'mem', 'msg', 'plaintext', 'prev', 'ptr', 'realloc', 'shl', 'shr', 'snprintf', 'src', 'str', 'tsearch', 'wunused', 'xor', 'xtea'))
+OWN_DICT = frozenset(('aes', 'arg', 'cmd', 'ciphertext', 'del', 'desc', 'dst', 'eax', 'ebx', 'ecx', 'edx', 'gettime', 'grep', 'hmac', 'init', 'linux', 'malloc', 'mem', 'msg', 'plaintext', 'prev', 'ptr', 'realloc', 'shl', 'shr', 'snprintf', 'src', 'str', 'sudo', 'tsearch', 'wunused', 'xor', 'xtea'))
 
 EXCLUDE = ('.git')
 
@@ -266,6 +266,8 @@ def dispatcher(root_name, file_name):
 		sscan_list = [sscan_text]
 	elif basename.endswith('.js'):
 		sscan_list = [sscan_text]
+	elif basename.endswith('.ko'):
+		return
 	elif basename.endswith('.md'):
 		sscan_list = [sscan_text]
 	elif basename.endswith('.o'):
