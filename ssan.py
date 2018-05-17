@@ -27,10 +27,11 @@ CHECK_MALLOC_CAST 		= 8
 CHECK_NEW_LINE_EOF 		= 9
 CHECK_MISSING_VOID_PROT = 10
 CHECK_RECURSIVE_INCLUDE = 11
-CHECK_SPACE_COND 		= 12
-CHECK_SPACE_EOL 		= 13
-CHECK_SPELLING 			= 14
-CHECK_WINDOWS_CARRIAGE 	= 15
+CHECK_SPACE_BRACE 		= 12
+CHECK_SPACE_COND 		= 13
+CHECK_SPACE_EOL 		= 14
+CHECK_SPELLING 			= 15
+CHECK_WINDOWS_CARRIAGE 	= 16
 
 def report(check_id, file_name, line, auto, arg = None):
 	string = "??"
@@ -57,6 +58,8 @@ def report(check_id, file_name, line, auto, arg = None):
 		string = 'no new line at EOF'
 	elif check_id == CHECK_RECURSIVE_INCLUDE:
 		string = 'non standard / missing protection to prevent recursive include'
+	elif check_id == CHECK_SPACE_BRACE:
+		string = 'no space before brace in defintion'
 	elif check_id == CHECK_SPACE_COND:
 		string = 'no space before condition'
 	elif check_id == CHECK_SPACE_EOL:
@@ -199,6 +202,14 @@ def sscan_ccode(lines, file_name):
 			lines[i] = regex.sub(r'\1(void){', line)
 			result = 1
 
+	# Space before brace for struct/enum/union definition
+	regex = re.compile(r'((struct|enum|union) [a-zA-Z0-9_]+){')
+	for i, line in enumerate(lines):
+		if len(regex.findall(line)):
+			report(CHECK_SPACE_BRACE, file_name, i + 1, True)
+			lines[i] = regex.sub(r'\1 {', line)
+			result = 1
+
 	# Multi-line macro
 	prev_size = 0
 	for i, line in enumerate(lines):
@@ -269,13 +280,15 @@ def dispatcher(root_name, file_name):
 	elif basename.endswith('.ko'):
 		return
 	elif basename.endswith('.md'):
-		sscan_list = [sscan_text]
+		sscan_list = []
 	elif basename.endswith('.o'):
 		return
 	elif basename.endswith('.py'):
 		sscan_list = [sscan_text]
 	elif basename.endswith('.pyc'):
 		return
+	elif basename.endswith('.rb'):
+		sscan_list = [sscan_text]
 	elif basename.endswith('.sh'):
 		sscan_list = [sscan_text]
 	elif basename.endswith('.txt'):
@@ -325,5 +338,5 @@ if __name__ == '__main__':
 				subdirs[:] = [subdir for subdir in subdirs if subdir not in EXCLUDE]
 				for file in files:
 					dispatcher(root, file)
-		else:
+		elif arg not in EXCLUDE:
 			dispatcher('', arg)
