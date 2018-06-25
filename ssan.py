@@ -115,37 +115,37 @@ def sscan_text(lines, file_name):
 	# Check empty file
 	if not len(lines):
 		report(CHECK_EMPTY_FILE, file_name, 0, False)
+	else:
+		# Check Windows newline
+		for i, line in enumerate(lines):
+			if line.find('\r') != -1:
+				report(CHECK_WINDOWS_CARRIAGE, file_name, i + 1, True)
+				lines[i] = line.replace('\r', '')
+				result = 1
 
-	# Check Windows newline
-	for i, line in enumerate(lines):
-		if line.find('\r') != -1:
-			report(CHECK_WINDOWS_CARRIAGE, file_name, i + 1, True)
-			lines[i] = line.replace('\r', '')
+		# Check empty lines
+		if lines[-1][-1] != '\n':
+			report(CHECK_NEW_LINE_EOF, file_name, len(lines), True)
+			lines[-1] = lines[-1] + '\n'
+			result = 1
+		elif lines[-1] == '\n':
+			report(CHECK_EMPTYL_END, file_name, i + 1, True)
+			while lines[-1] == '\n' and len(lines):
+				lines = lines[:-1]
+			result = 1
+		if lines[0] == '\n':
+			report(CHECK_EMPTYL_BEG, file_name, 1, True)
+			while lines[0] == '\n':
+				lines = lines[1:]
 			result = 1
 
-	# Check empty lines
-	if lines[-1][-1] != '\n':
-		report(CHECK_NEW_LINE_EOF, file_name, len(lines), True)
-		lines[-1] = lines[-1] + '\n'
-		result = 1
-	elif lines[-1] == '\n':
-		report(CHECK_EMPTYL_END, file_name, i + 1, True)
-		while lines[-1] == '\n' and len(lines):
-			lines = lines[:-1]
-		result = 1
-	if lines[0] == '\n':
-		report(CHECK_EMPTYL_BEG, file_name, 1, True)
-		while lines[0] == '\n':
-			lines = lines[1:]
-		result = 1
-
-	# Space or tab at end of line
-	regex = re.compile(r'[ \t]+$')
-	for i, line in enumerate(lines):
-		if len(regex.findall(line)):
-			report(CHECK_SPACE_EOL, file_name, i + 1, True)
-			lines[i] = regex.sub('', line)
-			result = 1
+		# Space or tab at end of line
+		regex = re.compile(r'[ \t]+$')
+		for i, line in enumerate(lines):
+			if len(regex.findall(line)):
+				report(CHECK_SPACE_EOL, file_name, i + 1, True)
+				lines[i] = regex.sub('', line)
+				result = 1
 
 	return result, lines
 
