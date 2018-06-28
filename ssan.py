@@ -130,22 +130,25 @@ def sscan_text(lines, file_name):
 			result = 1
 		elif lines[-1] == '\n':
 			report(CHECK_EMPTYL_END, file_name, i + 1, True)
-			while lines[-1] == '\n' and len(lines):
+			while lines and lines[-1] == '\n':
 				lines = lines[:-1]
 			result = 1
-		if lines[0] == '\n':
-			report(CHECK_EMPTYL_BEG, file_name, 1, True)
-			while lines[0] == '\n':
-				lines = lines[1:]
-			result = 1
-
-		# Space or tab at end of line
-		regex = re.compile(r'[ \t]+$')
-		for i, line in enumerate(lines):
-			if len(regex.findall(line)):
-				report(CHECK_SPACE_EOL, file_name, i + 1, True)
-				lines[i] = regex.sub('', line)
+		if not lines:
+			report(CHECK_EMPTY_FILE, file_name, 0, False)
+		else:
+			if lines[0] == '\n':
+				report(CHECK_EMPTYL_BEG, file_name, 1, True)
+				while lines[0] == '\n':
+					lines = lines[1:]
 				result = 1
+
+			# Space or tab at end of line
+			regex = re.compile(r'[ \t]+$')
+			for i, line in enumerate(lines):
+				if len(regex.findall(line)):
+					report(CHECK_SPACE_EOL, file_name, i + 1, True)
+					lines[i] = regex.sub('', line)
+					result = 1
 
 	return result, lines
 
@@ -239,9 +242,6 @@ def sscan_ccode(lines, file_name):
 		else:
 			prev_size = 0
 
-
-
-
 	return result, lines
 
 def sscan_cheader(lines, file_name):
@@ -258,10 +258,22 @@ def sscan_cheader(lines, file_name):
 
 	return 0, lines
 
-def dispatcher(root_name, file_name):
+def dispatcher(root_name, filename):
 	sscan_list = []
 
-	basename = os.path.basename(file_name)
+	basename = os.path.basename(filename)
+	fullname = os.path.join(root_name, filename)
+
+	# Rename file
+	newname = None
+	if basename.endswith('.yar'):
+		newname = fullname + 'a'
+
+	if newname:
+		os.rename(fullname, newname)
+		sys.stdout.write('\x1b[32m[+]\x1b[0m file ' + fullname + ' move to ' + newname + '\n')
+		fullname = newname
+		basename = os.path.basename(newname)
 
 	if basename.endswith('.asm'):
 		sscan_list = [sscan_text]
@@ -300,25 +312,25 @@ def dispatcher(root_name, file_name):
 	elif basename == 'Makefile':
 		sscan_list = [sscan_text]
 	else:
-		sys.stdout.write('\x1b[33m[-]\x1b[0m file ' + os.path.join(root_name, file_name) + ' has no known type -> skip\n')
+		sys.stdout.write('\x1b[33m[-]\x1b[0m file ' + fullname + ' has no known type -> skip\n')
 		return
 
-	file = open(os.path.join(root_name, file_name), 'r')
+	file = open(fullname, 'r')
 	lines = file.readlines()
 	file.close()
 
 	result = 0
 
 	for sscan in sscan_list:
-		local_result, lines = sscan(lines, os.path.join(root_name, file_name))
+		local_result, lines = sscan(lines, fullname)
 		result |= local_result
 
 	if result:
-		sys.stdout.write('\x1b[32m[+]\x1b[0m fixed problem(s) in ' + os.path.join(root_name, file_name) + '\n')
-		file = open(os.path.join(root_name, file_name), 'w')
+		file = open(fullname, 'w')
 		for line in lines:
 			file.write(line)
 		file.close()
+		sys.stdout.write('\x1b[32m[+]\x1b[0m fixed problem(s) in ' + fullname + '\n')
 
 if __name__ == '__main__':
 	if len(sys.argv) < 2:
