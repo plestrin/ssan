@@ -4,9 +4,10 @@ import sys
 import os
 import re
 import enchant
+import hashlib
 
 DICT = enchant.Dict('en_US')
-OWN_DICT = frozenset(('aes', 'arg', 'cmd', 'ciphertext', 'del', 'desc', 'dst', 'eax', 'ebx', 'ecx', 'edx', 'gettime', 'grep', 'hmac', 'init', 'linux', 'malloc', 'mem', 'msg', 'plaintext', 'prev', 'ptr', 'realloc', 'shl', 'shr', 'snprintf', 'src', 'str', 'sudo', 'tsearch', 'wunused', 'xor', 'xtea'))
+OWN_DICT = frozenset(('aes', 'arg', 'cmd', 'ciphertext', 'del', 'desc', 'dst', 'eax', 'ebx', 'ecx', 'edx', 'gettime', 'grep', 'hmac', 'init', 'linux', 'malloc', 'mem', 'msg', 'pe', 'plaintext', 'prev', 'ptr', 'realloc', 'shl', 'shr', 'snprintf', 'src', 'str', 'sudo', 'tsearch', 'wunused', 'xor', 'xtea'))
 
 EXCLUDE = ('.git')
 
@@ -32,6 +33,8 @@ CHECK_SPACE_COND 		= 13
 CHECK_SPACE_EOL 		= 14
 CHECK_SPELLING 			= 15
 CHECK_WINDOWS_CARRIAGE 	= 16
+
+hash_set = set()
 
 def report(check_id, file_name, line, auto, arg = None):
 	string = "??"
@@ -258,22 +261,38 @@ def sscan_cheader(lines, file_name):
 
 	return 0, lines
 
-def dispatcher(root_name, filename):
+def dispatcher(rootname, filename):
+	global hash_set
+
 	sscan_list = []
 
 	basename = os.path.basename(filename)
-	fullname = os.path.join(root_name, filename)
+	fullname = os.path.join(rootname, filename)
 
 	# Rename file
 	newname = None
 	if basename.endswith('.yar'):
 		newname = fullname + 'a'
+	elif filename.find(' ') != -1:
+		newname = os.path.join(rootname, filename.replace(' ', '_'))
 
 	if newname:
 		os.rename(fullname, newname)
 		sys.stdout.write('\x1b[32m[+]\x1b[0m file ' + fullname + ' move to ' + newname + '\n')
 		fullname = newname
 		basename = os.path.basename(newname)
+
+	# Check hash
+	file = open(fullname, 'r')
+	data = file.read()
+	file.close()
+
+	sha256 = hashlib.sha256(data).hexdigest()
+
+	if sha256 in hash_set:
+		sys.stdout.write('\x1b[33m[-]\x1b[0m file ' + fullname + ' is a duplicate\n')
+	else:
+		hash_set.add(sha256)
 
 	if basename.endswith('.asm'):
 		sscan_list = [sscan_text]
