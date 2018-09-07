@@ -322,6 +322,8 @@ def dispatcher(rootname, filename):
 		sscan_list = [sscan_text]
 	elif basename.endswith('.sh'):
 		sscan_list = [sscan_text]
+	elif basename.endswith('.so'):
+		return
 	elif basename.endswith('.txt'):
 		sscan_list = [sscan_text]
 	elif basename.endswith('.yara'):
