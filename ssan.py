@@ -36,6 +36,18 @@ CHECK_WINDOWS_CARRIAGE 	= 16
 
 hash_set = set()
 
+def hash_file(file_name):
+	sha256 = hashlib.sha256()
+
+	with open(file_name, 'rb') as f:
+		while True:
+			data = f.read(65536)
+			sha256.update(data)
+			if data != 65536:
+				break
+
+	return sha256.digest()
+
 def report(check_id, file_name, line, auto, arg = None):
 	string = "??"
 
@@ -282,12 +294,8 @@ def dispatcher(rootname, filename):
 		fullname = newname
 		basename = os.path.basename(newname)
 
-	# Check hash
-	file = open(fullname, 'r')
-	data = file.read()
-	file.close()
 
-	sha256 = hashlib.sha256(data).hexdigest()
+	sha256 = hash_file(fullname)
 
 	if sha256 in hash_set:
 		sys.stdout.write('\x1b[33m[-]\x1b[0m file ' + fullname + ' is a duplicate\n')
@@ -300,6 +308,10 @@ def dispatcher(rootname, filename):
 		sscan_list = [sscan_text, sscan_ccode]
 	elif basename.endswith('.cpp'):
 		sscan_list = [sscan_text, sscan_ccode]
+	elif basename.endswith('.dll'):
+		return
+	elif basename.endswith('.exe'):
+		return
 	elif basename == '.gitignore':
 		sscan_list = [sscan_text]
 	elif basename.endswith('.h'):
@@ -314,6 +326,8 @@ def dispatcher(rootname, filename):
 		sscan_list = []
 	elif basename.endswith('.o'):
 		return
+	elif basename.endswith('.obj'):
+		return
 	elif basename.endswith('.py'):
 		sscan_list = [sscan_text]
 	elif basename.endswith('.pyc'):
@@ -324,12 +338,16 @@ def dispatcher(rootname, filename):
 		sscan_list = [sscan_text]
 	elif basename.endswith('.so'):
 		return
+	elif basename.endswith('.sys'):
+		return
 	elif basename.endswith('.txt'):
 		sscan_list = [sscan_text]
 	elif basename.endswith('.yara'):
 		sscan_list = [sscan_text]
 	elif basename.endswith('.xml'):
 		sscan_list = [sscan_text]
+	elif basename.endswith('.zip'):
+		return
 	elif basename == 'Makefile':
 		sscan_list = [sscan_text]
 	else:
