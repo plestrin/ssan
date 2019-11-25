@@ -7,7 +7,7 @@ import enchant
 import hashlib
 
 DICT = enchant.Dict('en_US')
-OWN_DICT = frozenset(('aes', 'arg', 'cmd', 'ciphertext', 'del', 'desc', 'dst', 'eax', 'ebx', 'ecx', 'edx', 'gettime', 'grep', 'hmac', 'init', 'linux', 'malloc', 'mem', 'msg', 'pe', 'plaintext', 'prev', 'ptr', 'realloc', 'shl', 'shr', 'snprintf', 'src', 'str', 'sudo', 'tsearch', 'wunused', 'xor', 'xtea'))
+OWN_DICT = frozenset(('addr', 'aes', 'arg', 'cmd', 'ciphertext', 'del', 'desc', 'dev', 'dst', 'eax', 'ebx', 'ecx', 'edx', 'endianness', 'gettime', 'grep', 'hmac', 'init', 'linux', 'malloc', 'mem', 'msg', 'nb', 'pci', 'pe', 'plaintext', 'prev', 'proc', 'ptr', 'rb', 'realloc', 'shl', 'shr', 'sizeof', 'snprintf', 'src', 'str', 'struct', 'sudo', 'tmp', 'tsearch', 'wunused', 'xor', 'xtea'))
 
 EXCLUDE = ('.git')
 
@@ -18,21 +18,22 @@ CONFIG_VERBOSE 		= False
 CONFIG_MAX_REPORT 	= 10
 
 CHECK_ALIGN_MUL_MACRO 	= 1
-CHECK_EMPTY_FILE 		= 2
-CHECK_EMPTYL_BEG 		= 3
-CHECK_EMPTYL_END 		= 4
-CHECK_EXPLICIT_NZCOND 	= 5
-CHECK_EXPLICIT_ZCOND 	= 6
-CHECK_INDENT_SPACE 		= 7
-CHECK_MALLOC_CAST 		= 8
-CHECK_NEW_LINE_EOF 		= 9
-CHECK_MISSING_VOID_PROT = 10
-CHECK_RECURSIVE_INCLUDE = 11
-CHECK_SPACE_BRACE 		= 12
-CHECK_SPACE_COND 		= 13
-CHECK_SPACE_EOL 		= 14
-CHECK_SPELLING 			= 15
-CHECK_WINDOWS_CARRIAGE 	= 16
+CHECK_DOUBLE_SPACE 		= 2
+CHECK_EMPTY_FILE 		= 3
+CHECK_EMPTYL_BEG 		= 4
+CHECK_EMPTYL_END 		= 5
+CHECK_EXPLICIT_NZCOND 	= 6
+CHECK_EXPLICIT_ZCOND 	= 7
+CHECK_INDENT_SPACE 		= 8
+CHECK_MALLOC_CAST 		= 9
+CHECK_NEW_LINE_EOF 		= 10
+CHECK_MISSING_VOID_PROT = 11
+CHECK_RECURSIVE_INCLUDE = 12
+CHECK_SPACE_BRACE 		= 13
+CHECK_SPACE_COND 		= 14
+CHECK_SPACE_EOL 		= 15
+CHECK_SPELLING 			= 16
+CHECK_WINDOWS_CARRIAGE 	= 17
 
 hash_set = set()
 
@@ -43,7 +44,7 @@ def hash_file(file_name):
 		while True:
 			data = f.read(65536)
 			sha256.update(data)
-			if data != 65536:
+			if len(data) != 65536:
 				break
 
 	return sha256.digest()
@@ -53,6 +54,8 @@ def report(check_id, file_name, line, auto, arg = None):
 
 	if check_id == CHECK_ALIGN_MUL_MACRO:
 		string = 'alignment in multi-line macro'
+	elif check_id == CHECK_DOUBLE_SPACE:
+		string = 'double space'
 	elif check_id == CHECK_EMPTY_FILE:
 		string = 'empty file'
 	elif check_id == CHECK_EMPTYL_BEG:
@@ -103,7 +106,7 @@ def report(check_id, file_name, line, auto, arg = None):
 		report.counter = 0
 
 	if CONFIG_VERBOSE or report.counter < CONFIG_MAX_REPORT:
-		sys.stdout.write(file_name + ':' + str(line) + ' - ' +  string)
+		sys.stdout.write(file_name + ':' + str(line) + ' - ' + string)
 		if arg != None:
 			sys.stdout.write(' ' + arg)
 		if not auto:
@@ -244,7 +247,7 @@ def sscan_ccode(lines, file_name):
 				if size < prev_size:
 					while size < prev_size:
 						lines[i] = lines[i][:-2] + '\t\\\n'
-						size +=  CONFIG_TAB_SIZE - (size % CONFIG_TAB_SIZE)
+						size += CONFIG_TAB_SIZE - (size % CONFIG_TAB_SIZE)
 						result = 1
 					report(CHECK_ALIGN_MUL_MACRO, file_name, i + 1, True)
 			elif size % CONFIG_TAB_SIZE:
@@ -273,6 +276,17 @@ def sscan_cheader(lines, file_name):
 
 	return 0, lines
 
+def sscan_pcode(lines, file_name):
+	# Double space in the middle of a line
+	for i, line in enumerate(lines):
+		for j, b in enumerate(line):
+			if b != ' ' or b != '\t':
+				if line[j:].find('  ') != -1:
+					report(CHECK_DOUBLE_SPACE, file_name, i + 1, False)
+				break
+
+	return 0, lines
+
 def dispatcher(rootname, filename):
 	global hash_set
 
@@ -294,16 +308,18 @@ def dispatcher(rootname, filename):
 		fullname = newname
 		basename = os.path.basename(newname)
 
-
 	sha256 = hash_file(fullname)
-
 	if sha256 in hash_set:
 		sys.stdout.write('\x1b[33m[-]\x1b[0m file ' + fullname + ' is a duplicate\n')
 	else:
 		hash_set.add(sha256)
 
-	if basename.endswith('.asm'):
+	if basename.endswith('.a'):
+		return
+	elif basename.endswith('.asm'):
 		sscan_list = [sscan_text]
+	elif basename.endswith('.bin'):
+		return
 	elif basename.endswith('.c'):
 		sscan_list = [sscan_text, sscan_ccode]
 	elif basename.endswith('.cpp'):
@@ -329,7 +345,7 @@ def dispatcher(rootname, filename):
 	elif basename.endswith('.obj'):
 		return
 	elif basename.endswith('.py'):
-		sscan_list = [sscan_text]
+		sscan_list = [sscan_text, sscan_pcode]
 	elif basename.endswith('.pyc'):
 		return
 	elif basename.endswith('.rb'):
@@ -337,6 +353,8 @@ def dispatcher(rootname, filename):
 	elif basename.endswith('.sh'):
 		sscan_list = [sscan_text]
 	elif basename.endswith('.so'):
+		return
+	elif basename.endswith('.symvers'):
 		return
 	elif basename.endswith('.sys'):
 		return
