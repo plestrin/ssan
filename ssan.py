@@ -49,6 +49,19 @@ def hash_file(file_name):
 
 	return sha256.digest()
 
+def is_elf_file(file_name):
+	with open(file_name, 'rb') as f:
+		elf_hdr = f.read(16)
+	if len(elf_hdr) != 16:
+		return False
+	if not elf_hdr[ : 4] == '\x7fELF': # magic
+		return False
+	if elf_hdr[4] not in ('\x00', '\x01', '\x02'): # class
+		return False
+	if elf_hdr[5] not in ('\x00', '\x01', '\x02'): # encoding
+		return False
+	return elf_hdr[9 : ] == '\x00\x00\x00\x00\x00\x00\x00'
+
 def report(check_id, file_name, line, auto, arg=None):
 	string = "??"
 
@@ -367,7 +380,8 @@ def dispatcher(rootname, filename):
 	elif basename == 'Makefile':
 		sscan_list = [sscan_text]
 	else:
-		sys.stdout.write('\x1b[33m[-]\x1b[0m file ' + fullname + ' has no known type -> skip\n')
+		if not is_elf_file(fullname):
+			sys.stdout.write('\x1b[33m[-]\x1b[0m file ' + fullname + ' has no known type -> skip\n')
 		return
 
 	file = open(fullname, 'r')
