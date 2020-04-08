@@ -32,8 +32,9 @@ CHECK_RECURSIVE_INCLUDE = 12
 CHECK_SPACE_BRACE 		= 13
 CHECK_SPACE_COND 		= 14
 CHECK_SPACE_EOL 		= 15
-CHECK_SPELLING 			= 16
-CHECK_WINDOWS_CARRIAGE 	= 17
+CHECK_SEVERAL_SEMICOL 	= 16
+CHECK_SPELLING 			= 17
+CHECK_WINDOWS_CARRIAGE 	= 18
 
 HASH_SET = set()
 
@@ -90,11 +91,13 @@ def report(check_id, file_name, line, auto, arg=None):
 	elif check_id == CHECK_RECURSIVE_INCLUDE:
 		string = 'non standard / missing protection to prevent recursive include'
 	elif check_id == CHECK_SPACE_BRACE:
-		string = 'no space before brace in defintion'
+		string = 'no space before / after brace'
 	elif check_id == CHECK_SPACE_COND:
 		string = 'no space before condition'
 	elif check_id == CHECK_SPACE_EOL:
 		string = 'space(s) / tab(s) at EOL'
+	elif check_id == CHECK_SEVERAL_SEMICOL:
+		string = 'several semi-column'
 	elif check_id == CHECK_SPELLING:
 		string = 'spell check'
 	elif check_id == CHECK_WINDOWS_CARRIAGE:
@@ -243,6 +246,29 @@ def sscan_ccode(lines, file_name):
 			report(CHECK_SPACE_BRACE, file_name, i + 1, True)
 			lines[i] = regex.sub(r'\1 {', line)
 			result = 1
+
+	# Space before brace for else/do statement
+	regex = re.compile(r'((else|do)){')
+	for i, line in enumerate(lines):
+		if regex.findall(line):
+			report(CHECK_SPACE_BRACE, file_name, i + 1, True)
+			lines[i] = regex.sub(r'\1 {', line)
+			result = 1
+
+	# Space after closing brace for do ... while statement
+	regex = re.compile(r'}while')
+	for i, line in enumerate(lines):
+		if regex.findall(line):
+			report(CHECK_SPACE_BRACE, file_name, i + 1, True)
+			lines[i] = regex.sub(r'} while', line)
+			result = 1
+
+	# More than one semi column
+	regex = re.compile(r';;+')
+	for i, line in enumerate(lines):
+		if regex.findall(line):
+			report(CHECK_SEVERAL_SEMICOL, file_name, i + 1, False)
+			# no auto correct because it is a rare mistake and correction will mess up with the for (;;){ syntax
 
 	# Multi-line macro
 	prev_size = 0
