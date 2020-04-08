@@ -7,7 +7,7 @@ import enchant
 import hashlib
 
 DICT = enchant.Dict('en_US')
-OWN_DICT = frozenset(('addr', 'aes', 'arg', 'cmd', 'ciphertext', 'del', 'desc', 'dev', 'dst', 'eax', 'ebx', 'ecx', 'edx', 'endianness', 'gettime', 'grep', 'hmac', 'init', 'linux', 'malloc', 'mem', 'msg', 'nb', 'pci', 'pe', 'plaintext', 'prev', 'proc', 'ptr', 'rb', 'realloc', 'shl', 'shr', 'sizeof', 'snprintf', 'src', 'str', 'struct', 'sudo', 'tmp', 'tsearch', 'wunused', 'xor', 'xtea'))
+OWN_DICT = frozenset(('addr', 'aes', 'arg', 'cmd', 'ciphertext', 'del', 'desc', 'dev', 'dst', 'eax', 'ebx', 'ecx', 'edx', 'endianness', 'gettime', 'grep', 'hmac', 'init', 'len', 'linux', 'malloc', 'mem', 'msg', 'nb', 'pci', 'pe', 'pid', 'plaintext', 'prev', 'proc', 'ptr', 'ptrace', 'rb', 'realloc', 'ret', 'shl', 'shr', 'sizeof', 'snprintf', 'src', 'str', 'struct', 'sudo', 'tmp', 'tsearch', 'wunused', 'xor', 'xtea'))
 
 EXCLUDE = ('.git')
 
@@ -117,15 +117,18 @@ def report(check_id, file_name, line, auto, arg = None):
 		sys.stdout.write('\x1b[33m[-]\x1b[0m stop reporting: \'' + string + '\' for file ' + file_name + '\n')
 	report.counter += 1
 
-def generic_spelling(string, file_name, line):
+def generic_spelling(strings, file_name, line, file_typo):
 	global DICT
 	global OWN_DICT
 	global RE_TOKENIZE_WORD
 
-	words = RE_TOKENIZE_WORD.findall(string)
-	for word in words:
-		if len(word) < 32 and not DICT.check(word) and word.lower() not in OWN_DICT:
-			report(CHECK_SPELLING, file_name, line, False, '\x1b[31m' + word + '\x1b[0m in ' + string)
+	for string in strings:
+		words = RE_TOKENIZE_WORD.findall(string)
+		for word in words:
+			lword = word.lower()
+			if len(word) < 32 and not DICT.check(word) and lword not in OWN_DICT and lword not in file_typo:
+				report(CHECK_SPELLING, file_name, line, False, '\x1b[31m' + word + '\x1b[0m in ' + string)
+				file_typo.add(lword)
 
 def sscan_text(lines, file_name):
 	result = 0
@@ -210,10 +213,11 @@ def sscan_ccode(lines, file_name):
 	# Spell check strings
 	regex1 = re.compile(r'(?<!include )"[^"]*"')
 	regex2 = re.compile(r'%[0-9]*(c|d|p|s|u|x|lld|llu|llx)')
+	file_typo = set()
 	for i, line in enumerate(lines):
 		strings = regex1.findall(line)
-		for string in strings:
-			generic_spelling(regex2.sub('', string), file_name, i + 1)
+		strings = [regex2.sub('', string) for string in strings]
+		generic_spelling(strings, file_name, i + 1, file_typo)
 
 	# Non-void prototype
 	regex = re.compile(r'([a-zA-Z0-9_]+)[ ]*\(\)[ ]*\{')
