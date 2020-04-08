@@ -3,8 +3,8 @@
 import sys
 import os
 import re
-import enchant
 import hashlib
+import enchant
 
 DICT = enchant.Dict('en_US')
 OWN_DICT = frozenset(('addr', 'aes', 'arg', 'cmd', 'ciphertext', 'del', 'desc', 'dev', 'dst', 'eax', 'ebx', 'ecx', 'edx', 'endianness', 'gettime', 'grep', 'hmac', 'init', 'len', 'linux', 'malloc', 'mem', 'msg', 'nb', 'pci', 'pe', 'pid', 'plaintext', 'prev', 'proc', 'ptr', 'ptrace', 'rb', 'realloc', 'ret', 'shl', 'shr', 'sizeof', 'snprintf', 'src', 'str', 'struct', 'sudo', 'tmp', 'tsearch', 'wunused', 'xor', 'xtea'))
@@ -13,9 +13,9 @@ EXCLUDE = ('.git')
 
 RE_TOKENIZE_WORD = re.compile(r'(?<!%)[a-zA-Z][a-z]*')
 
-CONFIG_TAB_SIZE 	= 4
-CONFIG_VERBOSE 		= False
-CONFIG_MAX_REPORT 	= 10
+CONFIG_TAB_SIZE = 4
+CONFIG_VERBOSE = False
+CONFIG_MAX_REPORT = 10
 
 CHECK_ALIGN_MUL_MACRO 	= 1
 CHECK_DOUBLE_SPACE 		= 2
@@ -35,7 +35,7 @@ CHECK_SPACE_EOL 		= 15
 CHECK_SPELLING 			= 16
 CHECK_WINDOWS_CARRIAGE 	= 17
 
-hash_set = set()
+HASH_SET = set()
 
 def hash_file(file_name):
 	sha256 = hashlib.sha256()
@@ -49,7 +49,7 @@ def hash_file(file_name):
 
 	return sha256.digest()
 
-def report(check_id, file_name, line, auto, arg = None):
+def report(check_id, file_name, line, auto, arg=None):
 	string = "??"
 
 	if check_id == CHECK_ALIGN_MUL_MACRO:
@@ -118,10 +118,6 @@ def report(check_id, file_name, line, auto, arg = None):
 	report.counter += 1
 
 def generic_spelling(strings, file_name, line, file_typo):
-	global DICT
-	global OWN_DICT
-	global RE_TOKENIZE_WORD
-
 	for string in strings:
 		words = RE_TOKENIZE_WORD.findall(string)
 		for word in words:
@@ -134,7 +130,7 @@ def sscan_text(lines, file_name):
 	result = 0
 
 	# Check empty file
-	if not len(lines):
+	if not lines:
 		report(CHECK_EMPTY_FILE, file_name, 0, False)
 	else:
 		# Check Windows newline
@@ -150,7 +146,7 @@ def sscan_text(lines, file_name):
 			lines[-1] = lines[-1] + '\n'
 			result = 1
 		elif lines[-1] == '\n':
-			report(CHECK_EMPTYL_END, file_name, i + 1, True)
+			report(CHECK_EMPTYL_END, file_name, len(lines), True)
 			while lines and lines[-1] == '\n':
 				lines = lines[:-1]
 			result = 1
@@ -166,7 +162,7 @@ def sscan_text(lines, file_name):
 			# Space or tab at end of line
 			regex = re.compile(r'[ \t]+$')
 			for i, line in enumerate(lines):
-				if len(regex.findall(line)):
+				if regex.findall(line):
 					report(CHECK_SPACE_EOL, file_name, i + 1, True)
 					lines[i] = regex.sub('', line)
 					result = 1
@@ -179,13 +175,13 @@ def sscan_ccode(lines, file_name):
 	# Double space
 	regex = re.compile(r'( {2}|\t )')
 	for i, line in enumerate(lines):
-		if len(regex.findall(line)):
+		if regex.findall(line):
 			report(CHECK_INDENT_SPACE, file_name, i + 1, False)
 
 	# Space before condition
 	regex = re.compile(r'(^|[\t }])(if|for|while|switch)\(')
 	for i, line in enumerate(lines):
-		if len(regex.findall(line)):
+		if regex.findall(line):
 			report(CHECK_SPACE_COND, file_name, i + 1, True)
 			lines[i] = regex.sub(r'\1\2 (', line)
 			result = 1
@@ -193,19 +189,19 @@ def sscan_ccode(lines, file_name):
 	# Explicit non-zero condition
 	regex = re.compile(r'(!= *0[ )&|]|[ (&|]0 *!=)')
 	for i, line in enumerate(lines):
-		if len(regex.findall(line)):
+		if regex.findall(line):
 			report(CHECK_EXPLICIT_NZCOND, file_name, i + 1, False)
 
 	# Explicit zero condition
 	regex = re.compile(r'(== *0[ )&|]|[ (&|]0 *==)')
 	for i, line in enumerate(lines):
-		if len(regex.findall(line)):
+		if regex.findall(line):
 			report(CHECK_EXPLICIT_ZCOND, file_name, i + 1, False)
 
 	# Remove unnecessary cast
 	regex = re.compile(r'\([^()]+\*\)(malloc|realloc)\(')
 	for i, line in enumerate(lines):
-		if len(regex.findall(line)):
+		if regex.findall(line):
 			report(CHECK_MALLOC_CAST, file_name, i + 1, True)
 			lines[i] = regex.sub(r'\1(', line)
 			result = 1
@@ -222,7 +218,7 @@ def sscan_ccode(lines, file_name):
 	# Non-void prototype
 	regex = re.compile(r'([a-zA-Z0-9_]+)[ ]*\(\)[ ]*\{')
 	for i, line in enumerate(lines):
-		if len(regex.findall(line)):
+		if regex.findall(line):
 			report(CHECK_MISSING_VOID_PROT, file_name, i + 1, True)
 			lines[i] = regex.sub(r'\1(void){', line)
 			result = 1
@@ -230,7 +226,7 @@ def sscan_ccode(lines, file_name):
 	# Space before brace for struct/enum/union definition
 	regex = re.compile(r'((struct|enum|union) [a-zA-Z0-9_]+){')
 	for i, line in enumerate(lines):
-		if len(regex.findall(line)):
+		if regex.findall(line):
 			report(CHECK_SPACE_BRACE, file_name, i + 1, True)
 			lines[i] = regex.sub(r'\1 {', line)
 			result = 1
@@ -292,8 +288,6 @@ def sscan_pcode(lines, file_name):
 	return 0, lines
 
 def dispatcher(rootname, filename):
-	global hash_set
-
 	sscan_list = []
 
 	basename = os.path.basename(filename)
@@ -313,10 +307,10 @@ def dispatcher(rootname, filename):
 		basename = os.path.basename(newname)
 
 	sha256 = hash_file(fullname)
-	if sha256 in hash_set:
+	if sha256 in HASH_SET:
 		sys.stdout.write('\x1b[33m[-]\x1b[0m file ' + fullname + ' is a duplicate\n')
 	else:
-		hash_set.add(sha256)
+		HASH_SET.add(sha256)
 
 	if basename.endswith('.a'):
 		return
