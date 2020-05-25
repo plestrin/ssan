@@ -30,11 +30,12 @@ CHECK_NEW_LINE_EOF 		= 10
 CHECK_MISSING_VOID_PROT = 11
 CHECK_RECURSIVE_INCLUDE = 12
 CHECK_SPACE_BRACE 		= 13
-CHECK_SPACE_COND 		= 14
-CHECK_SPACE_EOL 		= 15
-CHECK_SEVERAL_SEMICOL 	= 16
-CHECK_SPELLING 			= 17
-CHECK_WINDOWS_CARRIAGE 	= 18
+CHECK_SPACE_CL_BRACKET 	= 14
+CHECK_SPACE_COND 		= 15
+CHECK_SPACE_EOL 		= 16
+CHECK_SEVERAL_SEMICOL 	= 17
+CHECK_SPELLING 			= 18
+CHECK_WINDOWS_CARRIAGE 	= 19
 
 HASH_SET = set()
 
@@ -92,6 +93,8 @@ def report(check_id, file_name, line, auto, arg=None):
 		string = 'non standard / missing protection to prevent recursive include'
 	elif check_id == CHECK_SPACE_BRACE:
 		string = 'no space before / after brace'
+	elif check_id == CHECK_SPACE_CL_BRACKET:
+		string = 'unintended space before closing bracket'
 	elif check_id == CHECK_SPACE_COND:
 		string = 'no space before condition'
 	elif check_id == CHECK_SPACE_EOL:
@@ -322,6 +325,14 @@ def sscan_pcode(lines, file_name):
 			if b != ' ' or b != '\t':
 				if line[j:].find('  ') != -1:
 					report(CHECK_DOUBLE_SPACE, file_name, i + 1, False)
+				break
+
+	# Space before closing bracket
+	for i, line in enumerate(lines):
+		for j, b in enumerate(line):
+			if b != ' ' or b != '\t':
+				if line.find(' )') != -1:
+					report(CHECK_SPACE_CL_BRACKET, file_name, i + 1, False)
 				break
 
 	return 0, lines
