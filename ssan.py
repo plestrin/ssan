@@ -386,6 +386,8 @@ def dispatcher(rootname, filename):
 		sscan_list = [sscan_text]
 	elif basename.endswith('.ko'):
 		return
+	elif basename.endswith('.log'):
+		return
 	elif basename.endswith('.md'):
 		sscan_list = []
 	elif basename.endswith('.o'):
