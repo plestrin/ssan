@@ -31,11 +31,12 @@ CHECK_MISSING_VOID_PROT = 11
 CHECK_RECURSIVE_INCLUDE = 12
 CHECK_SPACE_BRACE 		= 13
 CHECK_SPACE_CL_BRACKET 	= 14
-CHECK_SPACE_COND 		= 15
-CHECK_SPACE_EOL 		= 16
-CHECK_SEVERAL_SEMICOL 	= 17
-CHECK_SPELLING 			= 18
-CHECK_WINDOWS_CARRIAGE 	= 19
+CHECK_SPACE_COMMA 		= 15
+CHECK_SPACE_COND 		= 16
+CHECK_SPACE_EOL 		= 17
+CHECK_SEVERAL_SEMICOL 	= 18
+CHECK_SPELLING 			= 19
+CHECK_WINDOWS_CARRIAGE 	= 20
 
 HASH_SET = set()
 
@@ -95,6 +96,8 @@ def report(check_id, file_name, line, auto, arg=None):
 		string = 'no space before / after brace'
 	elif check_id == CHECK_SPACE_CL_BRACKET:
 		string = 'unintended space before closing bracket'
+	elif check_id == CHECK_SPACE_COMMA:
+		string = 'no space after comma'
 	elif check_id == CHECK_SPACE_COND:
 		string = 'no space before condition'
 	elif check_id == CHECK_SPACE_EOL:
@@ -265,6 +268,14 @@ def sscan_ccode(lines, file_name):
 			report(CHECK_SPACE_BRACE, file_name, i + 1, True)
 			lines[i] = regex.sub(r'} while', line)
 			result = 1
+
+	# Not space pr new line after comma
+	for i, line in enumerate(lines):
+		idx = line.find(',')
+		while idx != -1:
+			if idx + 1 < len(line) and line[idx + 1] not in (' ', '\n'):
+				report(CHECK_SPACE_COMMA, file_name, i + 1, False)
+			idx = line.find(',', idx + 1)
 
 	# More than one semi column
 	regex = re.compile(r';;+')
