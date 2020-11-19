@@ -7,7 +7,7 @@ import hashlib
 import enchant
 
 DICT = enchant.Dict('en_US')
-OWN_DICT = frozenset(('addr', 'aes', 'arg', 'cmd', 'ciphertext', 'del', 'desc', 'dev', 'dst', 'eax', 'ebx', 'ecx', 'edx', 'endianness', 'gettime', 'grep', 'hmac', 'init', 'len', 'linux', 'malloc', 'mem', 'msg', 'nb', 'pci', 'pe', 'pid', 'plaintext', 'prev', 'proc', 'ptr', 'ptrace', 'rb', 'realloc', 'ret', 'shl', 'shr', 'sizeof', 'snprintf', 'src', 'str', 'struct', 'sudo', 'tmp', 'tsearch', 'wunused', 'xor', 'xtea'))
+OWN_DICT = frozenset(('addr', 'aes', 'arg', 'cmd', 'ciphertext', 'del', 'desc', 'dev', 'dst', 'eax', 'ebx', 'ecx', 'edx', 'endianness', 'fpga', 'gettime', 'grep', 'hmac', 'init', 'len', 'linux', 'malloc', 'mem', 'msg', 'nb', 'pci', 'pe', 'pid', 'plaintext', 'prev', 'proc', 'ptr', 'ptrace', 'rb', 'realloc', 'ret', 'shl', 'shr', 'sizeof', 'snprintf', 'spi', 'src', 'str', 'struct', 'sudo', 'tmp', 'tsearch', 'wunused', 'xor', 'xtea'))
 
 EXCLUDE = ('.git')
 
@@ -378,6 +378,8 @@ def dispatcher(rootname, filename):
 		return
 	elif basename == '.gitignore':
 		sscan_list = [sscan_text]
+	elif basename.endswith('.gz'):
+		return
 	elif basename.endswith('.h'):
 		sscan_list = [sscan_text, sscan_ccode, sscan_cheader]
 	elif basename.endswith('.html'):
@@ -393,6 +395,10 @@ def dispatcher(rootname, filename):
 	elif basename.endswith('.o'):
 		return
 	elif basename.endswith('.obj'):
+		return
+	elif basename.endswith('.pcap'):
+		return
+	elif basename.endswith('.pem'):
 		return
 	elif basename.endswith('.py'):
 		sscan_list = [sscan_text, sscan_pcode]
