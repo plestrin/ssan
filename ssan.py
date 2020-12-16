@@ -34,9 +34,10 @@ CHECK_SPACE_CL_BRACKET 	= 14
 CHECK_SPACE_COMMA 		= 15
 CHECK_SPACE_COND 		= 16
 CHECK_SPACE_EOL 		= 17
-CHECK_SEVERAL_SEMICOL 	= 18
-CHECK_SPELLING 			= 19
-CHECK_WINDOWS_CARRIAGE 	= 20
+CHECK_SPACE_OPERATOR 	= 18
+CHECK_SEVERAL_SEMICOL 	= 19
+CHECK_SPELLING 			= 20
+CHECK_WINDOWS_CARRIAGE 	= 21
 
 HASH_SET = set()
 
@@ -85,7 +86,7 @@ def report(check_id, file_name, line, auto, arg=None):
 	elif check_id == CHECK_INDENT_SPACE:
 		string = 'indented with space'
 	elif check_id == CHECK_MALLOC_CAST:
-		string = 'explicit cast result of malloc/realloc'
+		string = 'explicit cast result of calloc/malloc/realloc'
 	elif check_id == CHECK_MISSING_VOID_PROT:
 		string = 'missing void in prototype'
 	elif check_id == CHECK_NEW_LINE_EOF:
@@ -102,6 +103,8 @@ def report(check_id, file_name, line, auto, arg=None):
 		string = 'no space before condition'
 	elif check_id == CHECK_SPACE_EOL:
 		string = 'space(s) / tab(s) at EOL'
+	elif check_id == CHECK_SPACE_OPERATOR:
+		string = 'no space around operator'
 	elif check_id == CHECK_SEVERAL_SEMICOL:
 		string = 'several semi-column'
 	elif check_id == CHECK_SPELLING:
@@ -221,7 +224,7 @@ def sscan_ccode(lines, file_name):
 			report(CHECK_EXPLICIT_ZCOND, file_name, i + 1, False)
 
 	# Remove unnecessary cast
-	regex = re.compile(r'\([^()]+\*\)(malloc|realloc)\(')
+	regex = re.compile(r'\([^()]+\*\)(calloc|malloc|realloc)\(')
 	for i, line in enumerate(lines):
 		if regex.findall(line):
 			report(CHECK_MALLOC_CAST, file_name, i + 1, True)
@@ -269,13 +272,27 @@ def sscan_ccode(lines, file_name):
 			lines[i] = regex.sub(r'} while', line)
 			result = 1
 
-	# Not space pr new line after comma
+	# No space or new line after comma
 	for i, line in enumerate(lines):
 		idx = line.find(',')
 		while idx != -1:
 			if idx + 1 < len(line) and line[idx + 1] not in (' ', '\n'):
 				report(CHECK_SPACE_COMMA, file_name, i + 1, False)
 			idx = line.find(',', idx + 1)
+
+	# No space around boolean operator
+	regex1 = re.compile(r'(==|<=|>=|!=|&&|\|\|)(?! )')
+	regex2 = re.compile(r'(?<! )(==|<=|>=|!=|&&|\|\|)')
+	for i, line in enumerate(lines):
+		if regex1.findall(line):
+			report(CHECK_SPACE_OPERATOR, file_name, i + 1, True)
+			line = regex1.sub(r'\1 ', line)
+			lines[i] = line
+			result = 1
+		if regex2.findall(line):
+			report(CHECK_SPACE_OPERATOR, file_name, i + 1, True)
+			lines[i] = regex2.sub(r' \1', line)
+			result = 1
 
 	# More than one semi column
 	regex = re.compile(r';;+')
@@ -369,7 +386,7 @@ def dispatcher(rootname, filename):
 
 	sha256 = hash_file(fullname)
 	if sha256 in HASH_SET:
-		sys.stdout.write('\x1b[33m[-]\x1b[0m file ' + fullname + ' is a duplicate\n')
+		sys.stdout.write('\x1b[33m[-]\x1b[0m file %s is a duplicate\n' % fullname)
 	else:
 		HASH_SET.add(sha256)
 
@@ -397,6 +414,8 @@ def dispatcher(rootname, filename):
 		sscan_list = [sscan_text]
 	elif basename.endswith('.js'):
 		sscan_list = [sscan_text]
+	elif basename.endswith('.go'):
+		sscan_list = [sscan_text]
 	elif basename.endswith('.ko'):
 		return
 	elif basename.endswith('.log'):
@@ -409,7 +428,11 @@ def dispatcher(rootname, filename):
 		return
 	elif basename.endswith('.pcap'):
 		return
+	elif basename.endswith('.pdf'):
+		return
 	elif basename.endswith('.pem'):
+		return
+	elif basename.endswith('.png'):
 		return
 	elif basename.endswith('.py'):
 		sscan_list = [sscan_text, sscan_pcode]
@@ -437,12 +460,11 @@ def dispatcher(rootname, filename):
 		sscan_list = [sscan_text]
 	else:
 		if not is_elf_file(fullname):
-			sys.stdout.write('\x1b[33m[-]\x1b[0m file ' + fullname + ' has no known type -> skip\n')
+			sys.stdout.write('\x1b[33m[-]\x1b[0m file %s has no known type -> skip\n' % fullname)
 		return
 
-	file = open(fullname, 'r')
-	lines = file.readlines()
-	file.close()
+	with open(fullname, 'r') as f:
+		lines = f.readlines()
 
 	result = 0
 
@@ -451,15 +473,14 @@ def dispatcher(rootname, filename):
 		result |= local_result
 
 	if result:
-		file = open(fullname, 'w')
-		for line in lines:
-			file.write(line)
-		file.close()
-		sys.stdout.write('\x1b[32m[+]\x1b[0m fixed problem(s) in ' + fullname + '\n')
+		with open(fullname, 'w') as f:
+			for line in lines:
+				f.write(line)
+		sys.stdout.write('\x1b[32m[+]\x1b[0m fixed problem(s) in %s\n' % fullname)
 
 if __name__ == '__main__':
 	if len(sys.argv) < 2:
-		sys.stderr.write('\x1b[31m[!]\x1b[0m Usage: ' + sys.argv[0] + ' [-v] path\n')
+		sys.stderr.write('\x1b[31m[!]\x1b[0m Usage: %s [-v] path\n' % sys.argv[0])
 		sys.exit(1)
 
 	path_args = []
@@ -473,7 +494,7 @@ if __name__ == '__main__':
 		if os.path.isdir(arg):
 			for root, subdirs, files in os.walk(arg, topdown=True):
 				subdirs[:] = [subdir for subdir in subdirs if subdir not in EXCLUDE]
-				for file in files:
-					dispatcher(root, file)
+				for f in files:
+					dispatcher(root, f)
 		elif arg not in EXCLUDE:
 			dispatcher('', arg)
